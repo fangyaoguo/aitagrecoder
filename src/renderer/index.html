@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' presetimg: data: blob:; font-src 'self'; connect-src 'self' ws://localhost:5173 http://localhost:5173;">
+  <meta name="color-scheme" content="light">
+  <title>AI 标签记录器</title>
+  <link rel="stylesheet" href="./css/base.css">
+  <link rel="stylesheet" href="./css/entries.css">
+  <link rel="stylesheet" href="./css/wordlib.css">
+  <link rel="stylesheet" href="./css/presets.css">
+</head>
+<body>
+
+  <!-- ===== 顶栏 ===== -->
+  <header class="app-bar">
+    <div class="brand">
+      <div class="brand-mark">T</div>
+      <span class="brand-name">AI 标签记录器</span>
+    </div>
+    <div class="search-box">
+      <span class="icon">&#x1F50D;</span>
+      <input id="global-search" type="search" placeholder="搜索条目标题 / 小 tag…" autocomplete="off">
+      <button class="icon-btn clear-search" id="global-search-clear" title="清除">✕</button>
+    </div>
+    <div class="app-actions">
+      <button class="gbtn primary" id="btn-new-entry">+ 新建条目</button>
+    </div>
+  </header>
+
+  <!-- ===== 主体 ===== -->
+  <div class="shell">
+    <nav class="nav-rail">
+      <button class="nav-item active" data-view="entries" title="条目记录">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16v4H4zm0 6h16v4H4zm0 6h10v4H4z" fill="currentColor"/></svg>
+        <span>条目</span>
+      </button>
+      <button class="nav-item" data-view="wordlib" title="词库工具箱">
+        <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z" fill="currentColor"/></svg>
+        <span>词库</span>
+      </button>
+      <button class="nav-item" data-view="settings" title="设置">
+        <svg viewBox="0 0 24 24"><path d="M19.4 13a7.9 7.9 0 0 0 0-2l2-1.5-2-3.5-2.4 1a8 8 0 0 0-1.7-1L14.9 3h-4l-.4 2.5a8 8 0 0 0-1.7 1l-2.4-1-2 3.5L6.6 11a7.9 7.9 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a8 8 0 0 0 1.7 1l.4 2.5h4l.4-2.5a8 8 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5zM12 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6z" fill="currentColor"/></svg>
+        <span>设置</span>
+      </button>
+    </nav>
+
+    <main class="content">
+      <!-- ===== 条目视图 ===== -->
+      <section class="view active" id="view-entries">
+        <div class="filter-bar">
+          <div class="filter-row">
+            <div class="seg" id="scope-seg">
+              <button data-scope="any" class="active">任意</button>
+              <button data-scope="positive">正面</button>
+              <button data-scope="negative">负面</button>
+            </div>
+            <span class="filter-hint">小tag筛选</span>
+            <span class="spacer"></span>
+            <span class="meta" id="entries-count"></span>
+          </div>
+          <div class="chip-row" id="tag-chips"></div>
+        </div>
+        <div class="entries-grid" id="entries-grid"></div>
+        <div class="empty-hint" id="entries-empty" hidden>
+          <p>还没有条目</p>
+          <span>点击右上角「新建条目」或用顶栏搜索框粘贴 tag 快速记录</span>
+        </div>
+      </section>
+
+      <!-- ===== 词库工具箱视图 ===== -->
+      <section class="view" id="view-wordlib">
+        <div class="wl-topbar">
+          <div class="search-box wl-search">
+            <span class="icon">&#x1F50D;</span>
+            <input id="wl-search-input" type="search" placeholder="搜中文 / 英文 / 别名 / 作品…" autocomplete="off">
+          </div>
+          <button class="gbtn" id="wl-search-clear">清除</button>
+          <span class="meta" id="wl-stats"></span>
+          <div class="wl-loading" id="wl-loading">正在加载词库…</div>
+        </div>
+        <div class="wl-main">
+          <div class="wl-browser">
+            <div class="l1-chips" id="wl-l1"></div>
+            <div class="wl-filter-row">
+              <button class="chip-toggle" id="wl-source-toggle">来源筛选</button>
+              <div class="wl-filter-chips" id="wl-source-chips" hidden></div>
+              <button class="chip-toggle" id="wl-safety-toggle">安全筛选</button>
+              <div class="wl-filter-chips" id="wl-safety-chips" hidden></div>
+              <button class="chip-toggle" id="wl-popular" title="开启后按热度排序;关闭时按英文词典序">热度排行</button>
+              <button class="chip-toggle" id="wl-reset" title="重置筛选">重置筛选</button>
+            </div>
+            <div class="wl-subtree" id="wl-subtree"></div>
+            <div class="wl-works" id="wl-works">
+              <input id="wl-work-search" type="search" placeholder="筛中文 / 英文作品名…" autocomplete="off">
+              <div class="wl-work-chips" id="wl-work-chips"></div>
+            </div>
+            <div class="wl-results-head">
+              <span id="wl-results-summary"></span>
+            </div>
+            <div class="wl-results" id="wl-results"></div>
+            <button class="gbtn wl-more" id="wl-more" hidden>加载更多</button>
+          </div>
+
+          <div class="wl-composer">
+            <div class="composer-head">
+              <strong>已选组合</strong>
+              <span class="meta" id="composer-count"></span>
+              <span class="spacer"></span>
+              <button class="gbtn compact" id="composer-toggle-empty">显示空槽</button>
+              <button class="gbtn compact" id="btn-presets">提示词预设</button>
+              <button class="gbtn compact danger" id="composer-clear">清空</button>
+            </div>
+            <div class="slot-list" id="slot-list"></div>
+          </div>
+        </div>
+
+        <div class="wl-export">
+          <div class="export-head">
+            <span class="export-label">导出</span>
+            <button class="chip2 active" data-mode="en">英文串</button>
+            <button class="chip2" data-mode="zh">中文串</button>
+            <button class="chip2" data-mode="bilingual">中英对照</button>
+            <button class="chip2" data-mode="negative">负向串</button>
+            <button class="chip2" data-mode="artist">画师串</button>
+            <span class="spacer"></span>
+            <span class="meta" id="export-summary"></span>
+            <button class="gbtn primary compact" id="btn-copy-export">一键复制</button>
+            <button class="gbtn compact" id="btn-save-entry">保存为新条目</button>
+          </div>
+          <div class="export-body">
+            <textarea id="export-box" readonly spellcheck="false" placeholder="组合标签后在此预览导出内容"></textarea>
+            <div class="bilingual-panes" id="bilingual-panes" hidden>
+              <div class="bilingual-pane">
+                <div class="pane-head">中文</div>
+                <div class="pane-body" id="bilingual-zh"></div>
+              </div>
+              <div class="bilingual-pane en">
+                <div class="pane-head">English</div>
+                <div class="pane-body" id="bilingual-en"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 设置视图 ===== -->
+      <section class="view" id="view-settings">
+        <div class="settings-page">
+          <h1 class="settings-title">设置</h1>
+          <div class="settings-card">
+            <h2>关于</h2>
+            <div class="settings-row">
+              <span>应用版本</span>
+              <b id="set-version"></b>
+            </div>
+          </div>
+          <div class="settings-card">
+            <h2>数据存储位置</h2>
+            <div class="settings-row">
+              <div class="settings-kv">
+                <span>应用数据目录</span>
+                <code id="set-data-dir"></code>
+              </div>
+              <button class="gbtn compact" id="btn-open-data-dir">打开</button>
+            </div>
+            <div class="settings-row">
+              <div class="settings-kv">
+                <span>条目与预设数据库</span>
+                <code id="set-db-path"></code>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div class="settings-kv">
+                <span>词库数据库</span>
+                <code id="set-wordlib-path"></code>
+              </div>
+              <button class="gbtn compact" id="btn-open-wordlib-dir">打开词库目录</button>
+            </div>
+            <div class="settings-row">
+              <div class="settings-kv">
+                <span>预设配图目录</span>
+                <code id="set-images-dir"></code>
+              </div>
+            </div>
+            <p class="hint">条目、预设与配图都保存在应用数据目录;词库数据库为只读,首次运行自动从安装目录复制到此。删除前请先备份。</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ===== 条目编辑对话框 ===== -->
+  <dialog class="g-dialog" id="entry-dialog">
+    <form method="dialog" class="g-dialog-shell" id="entry-form">
+      <header class="g-dialog-head">
+        <h2 id="entry-dialog-title">新建条目</h2>
+        <button class="icon-btn" value="cancel">✕</button>
+      </header>
+      <div class="g-dialog-body">
+        <label class="g-field">
+          <span>标题</span>
+          <input id="entry-title" type="text" maxlength="120" placeholder="给这条记录起个名字,可选">
+        </label>
+        <label class="g-field">
+          <span>正面 <em>(逗号分隔的小 tag)</em></span>
+          <textarea id="entry-positive" rows="7" placeholder="1girl, long hair, smile, …"></textarea>
+          <div class="chips-preview" id="preview-positive"></div>
+        </label>
+        <label class="g-field">
+          <span>负面 <em>(逗号分隔的小 tag)</em></span>
+          <textarea id="entry-negative" rows="5" placeholder="bad anatomy, lowres, …"></textarea>
+          <div class="chips-preview" id="preview-negative"></div>
+        </label>
+        <p class="hint">提示:小 tag 用逗号分隔;输入时下方实时预览。可从词库工具箱组合后「保存为新条目」。</p>
+      </div>
+      <footer class="g-dialog-foot">
+        <button class="gbtn danger" id="entry-delete-btn" type="button" hidden>删除</button>
+        <span class="spacer"></span>
+        <button class="gbtn" value="cancel">取消</button>
+        <button class="gbtn primary" id="entry-save-btn" value="save">保存</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- ===== 提示词预设对话框 ===== -->
+  <dialog class="g-dialog preset-dialog" id="preset-dialog">
+    <div class="g-dialog-shell">
+      <header class="g-dialog-head">
+        <h2>提示词预设管理</h2>
+        <button class="icon-btn" id="preset-dialog-close">✕</button>
+      </header>
+      <div class="preset-body">
+        <nav class="preset-types" id="preset-types"></nav>
+        <aside class="preset-list-panel">
+          <div class="preset-list-head">
+            <strong id="preset-list-title">预设列表</strong>
+            <span class="meta" id="preset-list-count"></span>
+          </div>
+          <div class="preset-list" id="preset-list"></div>
+        </aside>
+        <section class="preset-detail">
+          <label class="g-field">
+            <span>名称</span>
+            <input id="preset-name" type="text" maxlength="80" placeholder="例如:银发水手服角色">
+          </label>
+          <label class="g-field">
+            <span>设计备注</span>
+            <textarea id="preset-notes" rows="2" maxlength="400" placeholder="给人看的设计意图,可选"></textarea>
+          </label>
+          <div class="preset-images-block">
+            <div class="preset-images-head">
+              <strong>配图</strong>
+              <span class="meta" id="preset-image-count"></span>
+              <span class="spacer"></span>
+              <button class="gbtn compact" id="preset-import-images">导入配图</button>
+            </div>
+            <div class="preset-images" id="preset-images"></div>
+          </div>
+          <div class="preset-preview">
+            <label class="g-field">
+              <span>正向</span>
+              <textarea readonly rows="2" id="preset-positive"></textarea>
+            </label>
+            <label class="g-field">
+              <span>负面</span>
+              <textarea readonly rows="2" id="preset-negative"></textarea>
+            </label>
+            <label class="g-field">
+              <span>画师</span>
+              <textarea readonly rows="1" id="preset-artist"></textarea>
+            </label>
+          </div>
+          <div class="preset-actions">
+            <button class="gbtn primary" id="preset-save-new">另存为新预设</button>
+            <button class="gbtn" id="preset-overwrite" disabled>覆盖并升版</button>
+            <button class="gbtn" id="preset-load" disabled>载入到组合</button>
+            <button class="gbtn danger" id="preset-delete" disabled>删除</button>
+          </div>
+          <details class="preset-history" id="preset-history-box">
+            <summary>版本历史</summary>
+            <ul id="preset-history-list"></ul>
+          </details>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ===== 确认对话框 ===== -->
+  <dialog class="g-dialog small" id="confirm-dialog">
+    <form method="dialog" class="g-dialog-shell">
+      <header class="g-dialog-head"><h2 id="confirm-title">确认</h2></header>
+      <div class="g-dialog-body"><p id="confirm-text"></p></div>
+      <footer class="g-dialog-foot">
+        <span class="spacer"></span>
+        <button class="gbtn" value="cancel">取消</button>
+        <button class="gbtn danger" id="confirm-ok" value="ok">确定</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- ===== Snackbar ===== -->
+  <div class="snackbar" id="snackbar" hidden></div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

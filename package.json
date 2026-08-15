@@ -1,0 +1,47 @@
+{
+  "name": "aitagrecorder",
+  "version": "1.0.0",
+  "description": "AI 绘画 Tag 记录器 - 条目化记录正向/负向提示词，集成词库工具箱",
+  "main": "dist/electron/main.js",
+  "author": "aitagrecorder",
+  "license": "MIT",
+  "scripts": {
+    "install:deps": "node scripts/install.js",
+    "dev": "node scripts/dev.js",
+    "build": "node scripts/build.js",
+    "package": "node scripts/build.js && electron-builder --win",
+    "smoke": "electron . --smoke"
+  },
+  "devDependencies": {
+    "electron": "^38.2.0",
+    "electron-builder": "^26.0.12",
+    "vite": "^7.0.0"
+  },
+  "build": {
+    "appId": "com.aitag.recorder",
+    "productName": "AI标签记录器",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/electron/**",
+      "dist/renderer/**"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/wordlib",
+        "to": "wordlib"
+      }
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "icon": "build/icon.png"
+    },
+    "portable": {
+      "artifactName": "${productName}-便携版-${version}.exe"
+    }
+  }
+}

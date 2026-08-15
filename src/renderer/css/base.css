@@ -1,0 +1,359 @@
+/* ===== AI 标签记录器 - Google 风格基础样式 ===== */
+:root {
+  --bg: #f1f3f4;
+  --surface: #ffffff;
+  --surface-2: #f8f9fa;
+  --text: #202124;
+  --text-2: #5f6368;
+  --text-3: #80868b;
+  --border: #dadce0;
+  --blue: #1a73e8;
+  --blue-dark: #1765cc;
+  --blue-100: #e8f0fe;
+  --red: #d93025;
+  --red-100: #fce8e6;
+  --green: #188038;
+  --green-100: #e6f4ea;
+  --yellow: #f9ab00;
+  --yellow-100: #fef7e0;
+  --purple: #7c4dff;
+  --shadow-1: 0 1px 2px rgba(60, 64, 67, .3), 0 1px 3px 1px rgba(60, 64, 67, .15);
+  --shadow-2: 0 1px 3px rgba(60, 64, 67, .3), 0 4px 8px 3px rgba(60, 64, 67, .15);
+  --radius: 8px;
+  --radius-lg: 12px;
+  --font: "Google Sans", "Product Sans", Roboto, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  overflow: hidden;
+}
+button { font-family: var(--font); cursor: pointer; }
+input, textarea, select {
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  outline: none;
+}
+input::placeholder, textarea::placeholder { color: var(--text-3); }
+.spacer { flex: 1; }
+.meta { color: var(--text-2); font-size: 12px; }
+.hint { color: var(--text-3); font-size: 12px; line-height: 1.6; }
+
+/* ---------- 顶栏 ---------- */
+.app-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 64px;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  z-index: 40;
+  box-shadow: 0 1px 2px rgba(60, 64, 67, .15);
+}
+.brand { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.brand-mark {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #4285f4, #34a853);
+  color: #fff;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.brand-name { font-size: 18px; font-weight: 500; }
+.search-box {
+  flex: 1;
+  max-width: 640px;
+  margin: 0 auto;
+  height: 46px;
+  background: var(--bg);
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  transition: background .2s, box-shadow .2s;
+}
+.search-box:focus-within {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow-1);
+}
+.search-box .icon { color: var(--text-2); font-size: 15px; }
+.search-box input { flex: 1; height: 100%; font-size: 15px; }
+.search-box .clear-search { color: var(--text-2); }
+.app-actions { display: flex; gap: 8px; white-space: nowrap; }
+
+/* ---------- 按钮 ---------- */
+.gbtn {
+  height: 38px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background .15s;
+  white-space: nowrap;
+}
+.gbtn:hover { background: rgba(60, 64, 67, .08); }
+.gbtn.primary { background: var(--blue); color: #fff; }
+.gbtn.primary:hover { background: var(--blue-dark); }
+.gbtn.danger { color: var(--red); }
+.gbtn.danger:hover { background: var(--red-100); }
+.gbtn.compact { height: 30px; padding: 0 12px; font-size: 13px; }
+.gbtn.active { background: var(--blue-100); color: var(--blue); }
+.icon-btn {
+  width: 32px; height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 15px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.icon-btn:hover { background: rgba(60, 64, 67, .1); }
+.icon-btn.danger:hover { color: var(--red); background: var(--red-100); }
+
+/* ---------- 分段选择 ---------- */
+.seg {
+  display: inline-flex;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+.seg button {
+  border: none;
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-2);
+  transition: background .15s;
+}
+.seg button:hover { background: rgba(60, 64, 67, .08); }
+.seg button.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(60, 64, 67, .3); }
+
+/* ---------- chips ---------- */
+.chip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 16px;
+  height: 30px;
+  padding: 0 14px;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background .15s, border-color .15s;
+  white-space: nowrap;
+}
+.chip:hover { background: var(--surface-2); }
+.chip.active {
+  background: var(--blue-100);
+  border-color: var(--blue);
+  color: var(--blue);
+  font-weight: 500;
+}
+.chip .cnt { color: var(--text-3); font-size: 12px; }
+.chip.active .cnt { color: var(--blue); }
+.chip2 {
+  border: none;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border-radius: 16px;
+  height: 30px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+.chip2.active { background: var(--blue); color: #fff; }
+.chip-toggle {
+  border: none;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border-radius: 16px;
+  height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+.chip-toggle.active { background: var(--blue-100); color: var(--blue); font-weight: 500; }
+
+/* ---------- 布局 ---------- */
+.shell { display: flex; height: 100%; padding-top: 64px; }
+.nav-rail {
+  width: 72px;
+  flex-shrink: 0;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 12px;
+  gap: 4px;
+  border-right: 1px solid var(--border);
+}
+.nav-item {
+  width: 64px;
+  border: none;
+  background: transparent;
+  border-radius: 16px;
+  padding: 10px 0 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.nav-item svg { width: 24px; height: 24px; }
+.nav-item:hover { background: var(--surface-2); }
+.nav-item.active { background: var(--blue-100); color: var(--blue); font-weight: 500; }
+.content { flex: 1; overflow: hidden; position: relative; }
+.view { display: none; height: 100%; }
+.view.active { display: flex; flex-direction: column; }
+
+/* ---------- 对话框 ---------- */
+.g-dialog {
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 0;
+  box-shadow: var(--shadow-2);
+  background: var(--surface);
+  min-width: 420px;
+  max-width: 90vw;
+  max-height: 90vh;
+  margin: auto;   /* 居中(全局 margin:0 覆盖了 UA 的 dialog margin:auto) */
+}
+.g-dialog::backdrop { background: rgba(32, 33, 36, .5); }
+.g-dialog.small { min-width: 360px; }
+.g-dialog-shell { display: flex; flex-direction: column; max-height: 88vh; }
+.g-dialog-head {
+  display: flex;
+  align-items: center;
+  padding: 18px 24px 0;
+  gap: 8px;
+}
+.g-dialog-head h2 { font-size: 20px; font-weight: 500; flex: 1; }
+.g-dialog-body { padding: 18px 24px; display: flex; flex-direction: column; gap: 14px; overflow: auto; }
+.g-dialog-foot {
+  display: flex;
+  align-items: center;
+  padding: 10px 24px 16px;
+  gap: 8px;
+}
+.g-field { display: flex; flex-direction: column; gap: 6px; }
+.g-field > span { font-size: 13px; color: var(--text-2); }
+.g-field > span em { font-style: normal; color: var(--text-3); }
+.g-field input, .g-field textarea, .g-field select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--surface);
+  resize: vertical;
+  transition: border-color .15s, box-shadow .15s;
+}
+.g-field input:focus, .g-field textarea:focus, .g-field select:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, .2);
+}
+.g-field select { height: 40px; }
+
+/* 小 tag 实时预览 */
+.chips-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 20px;
+}
+.chips-preview .mini-chip {
+  background: var(--blue-100);
+  color: var(--blue-dark);
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+.chips-preview.neg .mini-chip { background: var(--red-100); color: var(--red); }
+
+/* ---------- Snackbar ---------- */
+.snackbar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #323232;
+  color: #fff;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  box-shadow: var(--shadow-2);
+  z-index: 100;
+  animation: snack-in .2s ease;
+  max-width: 80vw;
+}
+@keyframes snack-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* ---------- 设置页 ---------- */
+.settings-page {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 760px;
+}
+.settings-title { font-size: 22px; font-weight: 500; }
+.settings-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.settings-card h2 { font-size: 15px; font-weight: 500; color: var(--text-2); }
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.settings-row > span { color: var(--text-2); font-size: 13px; width: 110px; flex-shrink: 0; }
+.settings-row b { font-size: 13px; font-weight: 500; }
+.settings-kv { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.settings-kv span { font-size: 12px; color: var(--text-3); }
+.settings-kv code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+/* ---------- 滚动条 ---------- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(60, 64, 67, .3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(60, 64, 67, .5); }
+::-webkit-scrollbar-track { background: transparent; }
