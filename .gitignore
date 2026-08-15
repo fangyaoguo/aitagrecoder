@@ -10,6 +10,10 @@ build/shots/
 build/*.log
 build/*.err
 
+# SQLite 运行时侧文件
+*.sqlite-shm
+*.sqlite-wal
+
 # 系统文件
 Thumbs.db
 .DS_Store

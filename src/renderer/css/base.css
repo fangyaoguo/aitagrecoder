@@ -353,6 +353,33 @@ input::placeholder, textarea::placeholder { color: var(--text-3); }
   user-select: text;
 }
 
+.settings-select {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+}
+.settings-select:focus { border-color: var(--blue); outline: none; }
+
+/* 词库更新进度条 */
+.progress-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--blue-100);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--blue);
+  border-radius: 3px;
+  transition: width .3s ease;
+}
+
 /* ---------- 滚动条 ---------- */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: rgba(60, 64, 67, .3); border-radius: 4px; }

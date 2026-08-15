@@ -187,6 +187,32 @@
             </div>
             <p class="hint">条目、预设与配图都保存在应用数据目录;词库数据库为只读,首次运行自动从安装目录复制到此。删除前请先备份。</p>
           </div>
+          <div class="settings-card" id="wl-update-card">
+            <h2>词库更新</h2>
+            <div class="settings-row">
+              <span>更新档位</span>
+              <select class="settings-select" id="wl-update-mode">
+                <option value="fast">快速(新 tag 约 1000 + 热门 3000,约 1-2 分钟)</option>
+                <option value="full">完整(新 tag 约 2000 + 热门 10000,约 3-4 分钟)</option>
+              </select>
+              <button class="gbtn primary compact" id="btn-wl-update">开始更新</button>
+            </div>
+            <div class="settings-row" id="wl-update-progress-row" hidden>
+              <div class="progress-track"><div class="progress-fill" id="wl-update-bar"></div></div>
+            </div>
+            <div class="settings-row">
+              <span class="meta" id="wl-update-status"></span>
+            </div>
+            <div class="settings-row">
+              <span>上次更新</span>
+              <b class="meta" id="wl-update-last">从未</b>
+            </div>
+            <div class="settings-row">
+              <span>上次结果</span>
+              <b class="meta" id="wl-update-last-stats">—</b>
+            </div>
+            <p class="hint">从 Danbooru 拉取公开 tag 数据:发现新 tag 并同步热门 tag 热度计数。需要网络连接;更新期间词库仍可正常浏览。</p>
+          </div>
         </div>
       </section>
     </main>

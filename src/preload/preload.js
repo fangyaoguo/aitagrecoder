@@ -29,6 +29,13 @@ contextBridge.exposeInMainWorld('api', {
   wordlibTagsOfWork: (id) => ipcRenderer.invoke('wordlib:tagsOfWork', id),
   wordlibSlotsOfTags: (ens) => ipcRenderer.invoke('wordlib:slotsOfTags', ens),
   wordlibMeta: () => ipcRenderer.invoke('wordlib:meta'),
+  wordlibUpdate: (opts) => ipcRenderer.invoke('wordlib:update', opts),
+  wordlibUpdateStatus: () => ipcRenderer.invoke('wordlib:updateStatus'),
+  onWordlibUpdateProgress: (cb) => {
+    const listener = (_e, p) => cb(p);
+    ipcRenderer.on('wordlib:update-progress', listener);
+    return () => ipcRenderer.removeListener('wordlib:update-progress', listener);
+  },
 
   // 通用
   clipboardWrite: (text) => ipcRenderer.invoke('app:clipboardWrite', text),

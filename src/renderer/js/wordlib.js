@@ -24,6 +24,7 @@ const FALLBACK_SLOTS = [
   ['abnormal', '猎奇-非常规'],
   ['negative', '负面提示词'],
   ['character', '作品角色'],
+  ['other', '未分类'],
 ];
 const SLOT_COLORS = {
   visual: '#c4a35a', camera: '#9b8fd9', person: '#6aa6e8', look: '#8ec07c',
@@ -34,6 +35,8 @@ const SLOT_COLORS = {
 };
 
 let artistCount = 0;
+let wlMeta = null;   // 词库元信息(source/safety 枚举),供筛选 chips 渲染
+let treeLoaded = false;
 
 const state = {
   tree: [],
@@ -69,6 +72,7 @@ export async function initWordlib() {
   try {
     const stats = await window.api.wordlibEnsure();
     artistCount = stats.artistCount;
+    wlMeta = await window.api.wordlibMeta();
     $('wl-stats').textContent = `${fmtNum(stats.tagCount)} 标签 · ${fmtNum(artistCount)} 画师 · ${fmtNum(stats.workCount)} 作品`;
     await loadTree();
     $('wl-loading').hidden = true;
@@ -229,6 +233,7 @@ async function loadTree() {
     for (const ch of state.children.get(n.id) || []) c += state.descCount.get(ch.id) || 0;
     state.descCount.set(n.id, c);
   }
+  treeLoaded = true;
 }
 
 // 节点 id -> 槽位 key:沿父链上溯到 L1 后归一化(与 TagToolbox slotColorKey 同思路)
@@ -365,8 +370,11 @@ function toggleFilterPanel(toggleId, chipsId) {
 
 async function renderFilterChips() {
   const srcEl = $('wl-source-chips');
-  srcEl.innerHTML = ['m', 'b', 'n'].map((s) => `
-    <button class="chip${state.source === s ? ' active' : ''}" data-source="${s}">${s === 'm' ? '主站' : s === 'b' ? '双语' : '负面'}</button>`).join('');
+  const sources = (wlMeta && wlMeta.sources) || ['m', 'b', 'n'];
+  const labels = (wlMeta && wlMeta.sourceLabels) || {};
+  const short = (s) => String(labels[s] || s).replace(/\s*\(.*\)$/, '').trim();   // '主站(main)' -> '主站'
+  srcEl.innerHTML = sources.map((s) => `
+    <button class="chip${state.source === s ? ' active' : ''}" data-source="${s}">${esc(short(s))}</button>`).join('');
   srcEl.querySelectorAll('[data-source]').forEach((b) => {
     b.addEventListener('click', () => {
       state.source = state.source === b.dataset.source ? 'any' : b.dataset.source;
@@ -375,8 +383,10 @@ async function renderFilterChips() {
     });
   });
   const safEl = $('wl-safety-chips');
-  safEl.innerHTML = ['adult', 'sensitive', 'unknown'].map((s) => `
-    <button class="chip${state.safety === s ? ' active' : ''}" data-safety="${s}">${s === 'adult' ? '成人' : s === 'sensitive' ? '敏感' : '未知'}</button>`).join('');
+  const safeties = (wlMeta && wlMeta.safeties) || ['adult', 'sensitive', 'unknown'];
+  const safLabels = { adult: '成人', sensitive: '敏感', unknown: '未知' };
+  safEl.innerHTML = safeties.map((s) => `
+    <button class="chip${state.safety === s ? ' active' : ''}" data-safety="${s}">${safLabels[s] || s}</button>`).join('');
   safEl.querySelectorAll('[data-safety]').forEach((b) => {
     b.addEventListener('click', () => {
       state.safety = state.safety === b.dataset.safety ? 'any' : b.dataset.safety;
@@ -620,4 +630,19 @@ export function composerState() {
     negative: polarityItems('negative').map(({ id, en, zh }) => ({ id, en, zh })),
     artist: polarityItems('artist').map(({ id, en, zh }) => ({ id, en, zh })),
   };
+}
+
+// 词库在线更新完成后刷新(设置页调用):重载树并重渲染 L1/子树/筛选/结果
+export async function refreshWordlib() {
+  if (!treeLoaded) return;
+  try {
+    await loadTree();
+    renderL1();
+    renderSubTree();
+    renderFilterChips();
+    renderWorks();
+    reloadResults();
+  } catch (e) {
+    console.error('[wordlib] 刷新失败', e);
+  }
 }

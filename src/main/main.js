@@ -4,6 +4,7 @@
 const { app, BrowserWindow, ipcMain, clipboard, dialog, Menu, protocol, net } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const os = require('node:os');
 const fsp = require('node:fs/promises');
 const crypto = require('node:crypto');
 const { pathToFileURL } = require('node:url');
@@ -170,6 +171,17 @@ function registerIpc() {
   ipcMain.handle('wordlib:tagsOfWork', (_e, id) => wordlib.tagsOfWork(id));
   ipcMain.handle('wordlib:slotsOfTags', (_e, ens) => wordlib.slotsOfTags(ens));
   ipcMain.handle('wordlib:meta', () => ({ safeties: wordlib.SAFETIES, sources: wordlib.SOURCES, sourceLabels: wordlib.SOURCE_LABELS }));
+  ipcMain.handle('wordlib:update', async (_e, opts) => {
+    await wordlib.ensure();
+    return wordlib.updateTagLib({
+      mode: (opts && opts.mode) || 'fast',
+      onProgress: (p) => { if (win && !win.isDestroyed()) win.webContents.send('wordlib:update-progress', p); },
+    });
+  });
+  ipcMain.handle('wordlib:updateStatus', async () => {
+    try { await wordlib.ensure(); } catch {}
+    return wordlib.updateStatus();
+  });
 
   // 通用
   ipcMain.handle('app:clipboardWrite', (_e, text) => clipboard.writeText(String(text ?? '')));
@@ -205,6 +217,45 @@ async function runSmoke() {
     const works = wordlib.searchWorks({ q: 'compass', limit: 2 });
     results.push(`searchWorks(q=compass) -> ${works.map((w) => w.zh || w.id).join(', ')}`);
 
+    // 词库更新管线(离线:注入 fake fetcher + 临时库副本,绝不触网)
+    const { DatabaseSync } = require('node:sqlite');
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aitag-wl-'));
+    try {
+      const tmpDb = path.join(tmpDir, 'wl.sqlite');
+      fs.copyFileSync(wordlib.path, tmpDb);   // ensure() 已跑过,拷贝一份作测试库
+      const pages = [
+        [
+          { id: 1, name: 'smoke_new_tag_a', post_count: 42, category: 0, words: ['alias_a'], is_deprecated: false },
+          { id: 2, name: 'smoke_new_char', post_count: 7, category: 4, words: [], is_deprecated: false },
+        ],
+        [
+          { id: 3, name: 'long_hair', post_count: 999999, category: 0, words: [], is_deprecated: false },
+        ],
+      ];
+      let call = 0;
+      const fakeFetch = async () => pages[Math.min(call++, pages.length - 1)];
+      const u1 = await wordlib.updateTagLib({ mode: 'fast', dbPath: tmpDb, fetcher: fakeFetch, pageDelayMs: 1 });
+      const u2 = await wordlib.updateTagLib({ mode: 'fast', dbPath: tmpDb, fetcher: fakeFetch, pageDelayMs: 1 });
+      results.push(`update r1 new=${u1.newTags} upd=${u1.updatedTags} r2(幂等) new=${u2.newTags} upd=${u2.updatedTags}`);
+      const tdb = new DatabaseSync(tmpDb, { readOnly: true });
+      const tNew = tdb.prepare("SELECT * FROM tag WHERE tag_id='smoke_new_tag_a'").get();
+      const tChar = tdb.prepare("SELECT * FROM tag WHERE tag_id='smoke_new_char'").get();
+      const tHot = tdb.prepare('SELECT post_count, zh FROM tag WHERE tag_id = ?').get('long_hair');
+      const tNode = tdb.prepare("SELECT label, depth FROM taxonomy_node WHERE id='online-import'").get();
+      const tMeta = tdb.prepare("SELECT value FROM meta WHERE key='aitag:update_stats'").get();
+      tdb.close();
+      results.push(`update newTag source=${tNew.source} node=${tNew.node_id} charCat=${tChar.category} hot=${tHot.post_count} zh-preserved=${tHot.zh} node=${tNode.label}/${tNode.depth} meta=${!!tMeta}`);
+      const con = await Promise.allSettled([
+        wordlib.updateTagLib({ mode: 'fast', dbPath: tmpDb, fetcher: fakeFetch, pageDelayMs: 1 }),
+        wordlib.updateTagLib({ mode: 'fast', dbPath: tmpDb, fetcher: fakeFetch, pageDelayMs: 1 }),
+      ]);
+      results.push(`update 并发拒绝:${con[0].status === 'fulfilled' && con[1].status === 'rejected' ? 'ok' : 'FAIL'}`);
+      const after = wordlib.searchTags({ q: 'long_hair', limit: 1 });
+      results.push(`update 后只读恢复 searchTags=${after.length === 1 ? 'ok' : 'FAIL'}`);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+
     const p = db.savePreset({ type: 'character', name: '测试预设', positive: 'silver hair, sailor suit' });
     results.push(`presets.save ok id=${p.id} v${p.version}`);
     db.savePreset({ id: p.id, positive: 'silver hair, sailor suit, blue eyes', overwrite: true });
@@ -218,6 +269,21 @@ async function runSmoke() {
   }
   console.log('[smoke] ' + results.join('\n[smoke] '));
   app.exit(0);
+}
+
+// ---------- 真实网络词库更新(可选:--update-real,需网络) ----------
+async function runUpdateReal() {
+  try {
+    await wordlib.ensure();
+    const mode = process.argv.includes('--full') ? 'full' : 'fast';
+    const res = await wordlib.updateTagLib({ mode });
+    console.log('[update-real]', JSON.stringify(res));
+    console.log('[update-real] 词库统计:', JSON.stringify(wordlib.getStats()));
+    app.exit(0);
+  } catch (e) {
+    console.error('[update-real] FAILED:', e);
+    process.exit(1);
+  }
 }
 
 // ---------- UI 测试:加载渲染层并检查 JS 报错 ----------
@@ -261,14 +327,22 @@ async function runUiTest() {
     await new Promise(r => setTimeout(r, 500));
     const wlVisible = !document.getElementById('view-wordlib').classList.contains('active')
       ? 'FAIL' : document.getElementById('view-wordlib').classList.contains('active') ? 'ok' : 'FAIL';
+    // 4. 设置页:词库更新卡片存在 + 更新状态可查询
+    document.querySelector('.nav-item[data-view="settings"]').click();
+    await new Promise(r => setTimeout(r, 400));
+    const upCard = !!document.getElementById('wl-update-card');
+    const upBtn = !!document.getElementById('btn-wl-update');
+    const upModes = document.querySelectorAll('#wl-update-mode option').length;
+    const upStatus = await api.wordlibUpdateStatus();
     document.querySelector('.nav-item[data-view="entries"]').click();
-    // 4. 清理
+    // 5. 清理
     await api.entriesDelete(e.id);
     return {
       chips,
       tagSearch: wl.slice(0, 3).map(t => t.en),
       artists: arts.map(a => a.en),
       wlVisible,
+      settingsUpdate: upCard && upBtn && upModes === 2 && typeof upStatus.updating === 'boolean' ? 'ok' : 'FAIL',
     };
   })()`);
   console.log('[uitest] renderer:', JSON.stringify(rendererCheck));
@@ -433,7 +507,13 @@ async function runShot() {
     const dir = document.getElementById('set-data-dir').textContent;
     const db = document.getElementById('set-db-path').textContent;
     const visible = document.getElementById('view-settings').classList.contains('active');
-    return { visible, hasDir: dir.length > 5, hasDb: db.endsWith('aitagrecorder.db') };
+    return {
+      visible,
+      hasDir: dir.length > 5,
+      hasDb: db.endsWith('aitagrecorder.db'),
+      hasUpdateCard: !!document.getElementById('wl-update-card'),
+      updateModes: document.querySelectorAll('#wl-update-mode option').length,
+    };
   })()`);
   console.log('[shot] settings-check:', JSON.stringify(settingsCheck));
   await shot('settings');
@@ -475,6 +555,7 @@ app.whenReady().then(async () => {
   if (process.argv.includes('--smoke')) return runSmoke();
   if (process.argv.includes('--ui-test')) return runUiTest();
   if (process.argv.includes('--shot')) return runShot();
+  if (process.argv.includes('--update-real')) return runUpdateReal();
   registerImageProtocol();
   db.open();
   registerIpc();
