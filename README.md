@@ -26,6 +26,17 @@ AI 绘画 Tag 记录器：**条目化**记录正向 / 负向提示词，集成 *
 
 等价 npm 命令：`npm run dev` / `npm run build` / `npm run package`。
 
+## 自动打包与发布 (GitHub Actions)
+
+推送 `v*` 标签自动在 CI 打包便携版并创建 GitHub Release（`.github/workflows/release.yml`）：
+
+```
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+手动触发（仅打包上传产物、不建 Release）：仓库 Actions 页面 → Build & Release → Run workflow。
+
 ## 冒烟测试
 
 ```
