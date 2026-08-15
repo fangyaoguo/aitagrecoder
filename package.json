@@ -41,7 +41,7 @@
       "icon": "build/icon.png"
     },
     "portable": {
-      "artifactName": "${productName}-便携版-${version}.exe"
+      "artifactName": "aitagrecorder-portable-${version}.exe"
     }
   }
 }
