@@ -24,6 +24,7 @@
   --font: "Google Sans", "Product Sans", Roboto, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }  /* hidden 属性须优先于任何 display 类规则 */
 html, body { height: 100%; }
 body {
   font-family: var(--font);

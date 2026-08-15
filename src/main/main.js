@@ -326,6 +326,16 @@ async function runShot() {
     window.__shotIds = ids;
     return 'seeded';
   })()`);
+  // 空提示显隐检查:有数据时 entries-empty 必须真正隐藏(此前 .empty-hint{display:flex} 覆盖了 hidden 属性)
+  const emptyHintCheck = await shotWin.webContents.executeJavaScript(`(() => {
+    const el = document.getElementById('entries-empty');
+    return {
+      attrHidden: el.hidden,
+      display: getComputedStyle(el).display,
+      gridCards: document.querySelectorAll('#entries-grid .entry-card').length,
+    };
+  })()`);
+  console.log('[shot] empty-hint:', JSON.stringify(emptyHintCheck));
   // 快速记录卡溢出检查:窄窗口(1000)与默认窗口(1360)各测一次
   const quickCheckJs = `(() => {
     const card = document.querySelector('.quick-card');
@@ -362,7 +372,9 @@ async function runShot() {
     const rect = dlg.getBoundingClientRect();
     const cx = Math.abs(rect.left + rect.width / 2 - window.innerWidth / 2);
     const cy = Math.abs(rect.top + rect.height / 2 - window.innerHeight / 2);
-    const r = { open: dlg.open, w: Math.round(rect.width), h: Math.round(rect.height), centered: cx < 4 && cy < 4 };
+    // 新建模式下「删除」按钮必须真正隐藏(此前 .gbtn{display:inline-flex} 覆盖了 hidden 属性)
+    const delBtn = document.getElementById('entry-delete-btn');
+    const r = { open: dlg.open, w: Math.round(rect.width), h: Math.round(rect.height), centered: cx < 4 && cy < 4, deleteBtnDisplay: getComputedStyle(delBtn).display };
     document.getElementById('entry-dialog').close();
     return r;
   })()`);
