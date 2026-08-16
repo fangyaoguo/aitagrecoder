@@ -168,7 +168,7 @@ function registerIpc() {
   ipcMain.handle('wordlib:searchTags', (_e, opts) => wordlib.searchTags(opts || {}));
   ipcMain.handle('wordlib:searchArtists', (_e, opts) => wordlib.searchArtists(opts || {}));
   ipcMain.handle('wordlib:searchWorks', (_e, opts) => wordlib.searchWorks(opts || {}));
-  ipcMain.handle('wordlib:tagsOfWork', (_e, id) => wordlib.tagsOfWork(id));
+  ipcMain.handle('wordlib:tagsOfWork', (_e, id, opts) => wordlib.tagsOfWork(id, opts));
   ipcMain.handle('wordlib:slotsOfTags', (_e, ens) => wordlib.slotsOfTags(ens));
   ipcMain.handle('wordlib:meta', () => ({ safeties: wordlib.SAFETIES, sources: wordlib.SOURCES, sourceLabels: wordlib.SOURCE_LABELS }));
   ipcMain.handle('wordlib:update', async (_e, opts) => {
@@ -354,8 +354,36 @@ async function runUiTest() {
       document.getElementById('wl-search-clear').click();
       document.getElementById('composer-clear').click();
       await clickType('all');
-      const ok = allShown && characterShown && sceneHidden && artistHidden && artistSlotPicks >= 1 && otherSlotPicks === 0;
-      return { ok: ok ? 'ok' : 'FAIL', allShown, characterShown, sceneHidden, artistHidden, artistSlotPicks, otherSlotPicks };
+      // 作品分页:选中最热作品,验证 total / 加载更多 / 追加
+      const topWorks = await api.wordlibSearchWorks({ limit: 5 });
+      const topWork = topWorks[0];
+      const res1 = await api.wordlibTagsOfWork(topWork.id, { limit: 100, offset: 0 });
+      const contractOk = typeof res1.total === 'number' && Array.isArray(res1.rows)
+        && res1.rows.length === Math.min(100, res1.total);
+      const workChip = [...document.querySelectorAll('#wl-work-chips [data-work]')]
+        .find((c) => c.dataset.work === topWork.id);
+      workChip.click();
+      await new Promise((r) => setTimeout(r, 600));
+      const moreBtn = document.getElementById('wl-more');
+      const moreShown = !moreBtn.hidden;
+      const summary = document.getElementById('wl-results-summary').textContent;
+      const expectedMore = res1.total > 100;
+      const totalStr = res1.total.toLocaleString();
+      const uiOk = moreShown === expectedMore && summary.includes('共 ' + totalStr + ' 条');
+      let pagedRows = null;
+      if (expectedMore) {
+        moreBtn.click();
+        await new Promise((r) => setTimeout(r, 600));
+        pagedRows = document.querySelectorAll('#wl-results .result-row').length;
+      }
+      const workPagingOk = contractOk && uiOk && (!expectedMore || pagedRows > 100);
+      document.getElementById('wl-reset').click();
+      await new Promise((r) => setTimeout(r, 400));
+      const ok = allShown && characterShown && sceneHidden && artistHidden && artistSlotPicks >= 1 && otherSlotPicks === 0 && workPagingOk;
+      return {
+        ok: ok ? 'ok' : 'FAIL', allShown, characterShown, sceneHidden, artistHidden, artistSlotPicks, otherSlotPicks,
+        workPaging: { ok: workPagingOk ? 'ok' : 'FAIL', work: topWork.zh || topWork.id, total: res1.total, moreShown, expectedMore, pagedRows, summary },
+      };
     })();
     // 4. 设置页:词库更新卡片存在 + 更新状态可查询
     document.querySelector('.nav-item[data-view="settings"]').click();
@@ -375,8 +403,11 @@ async function runUiTest() {
       wlFixes,
       settingsUpdate: upCard && upBtn && upModes === 2 && typeof upStatus.updating === 'boolean' ? 'ok' : 'FAIL',
     };
-  })()`);
-  if (rendererCheck.wlFixes && rendererCheck.wlFixes.ok !== 'ok') {
+  })()`).catch((e) => {
+    errors.push('executeJavaScript 异常: ' + (e && e.stack || e));
+    return null;
+  });
+  if (rendererCheck && rendererCheck.wlFixes && rendererCheck.wlFixes.ok !== 'ok') {
     errors.push('wlFixes FAIL:' + JSON.stringify(rendererCheck.wlFixes));
   }
   console.log('[uitest] renderer:', JSON.stringify(rendererCheck));

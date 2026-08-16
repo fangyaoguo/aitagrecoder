@@ -107,7 +107,12 @@ function filtered() {
 function render() {
   const rows = filtered();
   countEl.textContent = `${rows.length} 条 · 共 ${state.entries.length} 条`;
-  emptyEl.hidden = rows.length !== 0 || state.entries.length !== 0;
+  // 空提示:完全无条目 vs 筛选无结果,分别给文案
+  emptyEl.hidden = rows.length !== 0;
+  if (!rows.length) {
+    const p = emptyEl.querySelector('p');
+    if (p) p.textContent = state.entries.length ? '没有符合筛选的条目' : '还没有条目';
+  }
 
   const frag = document.createDocumentFragment();
   frag.appendChild(quickCard());

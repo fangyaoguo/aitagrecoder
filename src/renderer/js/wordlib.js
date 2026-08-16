@@ -53,7 +53,8 @@ const state = {
   source: 'any',
   safety: 'any',
   popular: false,
-  work: null,            // 作品筛选
+  work: null,            // 作品筛选(id)
+  workZh: null,          // 作品筛选(中文名,用于提示)
   results: [],
   resultOffset: 0,
   limit: 100,
@@ -198,7 +199,7 @@ export async function initWordlib() {
 
 function resetFilters() {
   state.source = 'any'; state.safety = 'any'; state.popular = false;
-  state.work = null;
+  state.work = null; state.workZh = null;
   state.typeFilter = 'all'; state.subGroup = 'all'; state.subFilter = 'all'; state.leafFilter = 'all';
   ['wl-source-toggle', 'wl-safety-toggle', 'wl-popular'].forEach((id) => $(id).classList.remove('active'));
   $('wl-source-chips').hidden = true;
@@ -307,7 +308,7 @@ function renderSubTree() {
   // 作品筛选仅「全部」与「作品角色」下显示;其余分类隐藏并清空作品过滤
   const showWorks = state.typeFilter === 'all' || state.typeFilter === 'character';
   $('wl-works').hidden = !showWorks;
-  if (!showWorks && state.work) { state.work = null; renderWorks(); }
+  if (!showWorks && state.work) { state.work = null; state.workZh = null; renderWorks(); }
   if (!show) { el.innerHTML = ''; return; }
 
   const rows = [];
@@ -409,7 +410,10 @@ async function renderWorks() {
             title="${esc(w.zh)} · ${w.tagCount} tags">${esc(w.zh || w.id)}</button>`).join('');
   el.querySelectorAll('[data-work]').forEach((b) => {
     b.addEventListener('click', () => {
-      state.work = state.work === b.dataset.work ? null : b.dataset.work;
+      const off = state.work === b.dataset.work;
+      state.work = off ? null : b.dataset.work;
+      const workObj = works.find((x) => x.id === b.dataset.work);
+      state.workZh = off ? null : ((workObj && (workObj.zh || workObj.id)) || b.dataset.work);
       renderWorks();
       reloadResults();
     });
@@ -429,21 +433,20 @@ async function loadMore(reset) {
   const q = state.searchQ;
   let rows = [];
   let totalText = '';
+  let more = false;
 
   if (state.typeFilter === 'artist') {
     // 画师模式:独立画师库
     rows = (await window.api.wordlibSearchArtists({ q, limit: state.limit, offset: state.resultOffset }))
       .map((a) => ({ ...a, kind: 'artist' }));
     totalText = '独立画师词库';
+    more = rows.length >= state.limit;
   } else if (state.work) {
-    // 作品模式:该作品的标签(按热度),本地过滤搜索词
-    const tags = await window.api.wordlibTagsOfWork(state.work);
-    rows = q
-      ? tags.filter((t) => (t.en + ' ' + (t.zh || '')).toLowerCase().includes(q.toLowerCase()))
-      : tags;
-    rows = reset ? rows.slice(0, state.limit) : rows;
-    totalText = `${state.work} 下的标签`;
-    $('wl-more').hidden = true;
+    // 作品模式:该作品的标签(按热度),分页 + 搜索词过滤
+    const res = await window.api.wordlibTagsOfWork(state.work, { q, limit: state.limit, offset: state.resultOffset });
+    rows = res.rows;
+    totalText = `${state.workZh || state.work} 下的标签 · 共 ${fmtNum(res.total)} 条`;
+    more = state.resultOffset + rows.length < res.total;
   } else {
     rows = await window.api.wordlibSearchTags({
       q,
@@ -460,12 +463,12 @@ async function loadMore(reset) {
       rows = rows.concat(artists.map((a) => ({ ...a, kind: 'artist' })));
     }
     totalText = '';
+    more = rows.length >= state.limit;
   }
 
   if (reset) state.results = rows;
   else state.results = state.results.concat(rows);
 
-  const more = rows.length >= state.limit && !state.work;
   $('wl-more').hidden = !more;
   $('wl-results-summary').textContent =
     totalText || `搜索结果 ${state.results.length} 条${more ? '+' : ''}`;

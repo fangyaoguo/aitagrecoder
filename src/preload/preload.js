@@ -26,7 +26,7 @@ contextBridge.exposeInMainWorld('api', {
   wordlibSearchTags: (opts) => ipcRenderer.invoke('wordlib:searchTags', opts),
   wordlibSearchArtists: (opts) => ipcRenderer.invoke('wordlib:searchArtists', opts),
   wordlibSearchWorks: (opts) => ipcRenderer.invoke('wordlib:searchWorks', opts),
-  wordlibTagsOfWork: (id) => ipcRenderer.invoke('wordlib:tagsOfWork', id),
+  wordlibTagsOfWork: (id, opts) => ipcRenderer.invoke('wordlib:tagsOfWork', id, opts),
   wordlibSlotsOfTags: (ens) => ipcRenderer.invoke('wordlib:slotsOfTags', ens),
   wordlibMeta: () => ipcRenderer.invoke('wordlib:meta'),
   wordlibUpdate: (opts) => ipcRenderer.invoke('wordlib:update', opts),

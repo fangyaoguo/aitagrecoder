@@ -233,10 +233,20 @@ function searchWorks({ q = '', limit = 200 } = {}) {
   return rows.map((r) => ({ id: r.id, zh: r.zh, tagCount: r.tag_count }));
 }
 
-// 某作品下的 tag
-function tagsOfWork(workId) {
-  const rows = db.prepare('SELECT tag_id, zh, en_display, post_count, node_id FROM tag WHERE work_id = ? ORDER BY post_count DESC LIMIT 500').all(workId);
-  return rows.map((r) => ({ id: r.tag_id, en: r.en_display, zh: r.zh, postCount: r.post_count, nodeId: r.node_id }));
+// 某作品下的 tag(分页,可按搜索词过滤)
+function tagsOfWork(workId, { q = '', limit = 100, offset = 0 } = {}) {
+  const conds = ['work_id = ?'];
+  const params = [workId];
+  if (q) {
+    conds.push('(search_text LIKE ? OR en_display LIKE ? OR zh LIKE ?)');
+    const p = '%' + q.toLowerCase() + '%';
+    params.push(p, p, p);
+  }
+  const where = conds.join(' AND ');
+  const total = db.prepare(`SELECT COUNT(*) c FROM tag WHERE ${where}`).get(...params).c;
+  const rows = db.prepare(`SELECT tag_id, zh, en_display, post_count, node_id FROM tag WHERE ${where} ORDER BY post_count DESC LIMIT ? OFFSET ?`)
+    .all(...params, limit, offset);
+  return { total, rows: rows.map((r) => ({ id: r.tag_id, en: r.en_display, zh: r.zh, postCount: r.post_count, nodeId: r.node_id })) };
 }
 
 // 元信息:分类/标签统计(界面显示用)
