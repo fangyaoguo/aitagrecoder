@@ -223,10 +223,16 @@ async function runSmoke() {
     try {
       const tmpDb = path.join(tmpDir, 'wl.sqlite');
       fs.copyFileSync(wordlib.path, tmpDb);   // ensure() 已跑过,拷贝一份作测试库
+      // 预置一条旧格式存量记录(category=4 挂在未分类),验证更新时自动归位到作品角色
+      const preDb = new DatabaseSync(tmpDb);
+      preDb.prepare(`INSERT INTO tag(tag_id, zh, en_display, zh_aliases_json, en_aliases_json, search_text, source, safety, post_count, main_count, nsfw_count, category, status, work_id, node_id)
+        VALUES('legacy_char','','legacy_char','[]','[]','legacy_char','b','unknown',5,5,0,4,'classified','','online-import')`).run();
+      preDb.close();
       const pages = [
         [
           { id: 1, name: 'smoke_new_tag_a', post_count: 42, category: 0, words: ['alias_a'], is_deprecated: false },
           { id: 2, name: 'smoke_new_char', post_count: 7, category: 4, words: [], is_deprecated: false },
+          { id: 4, name: 'smoke_new_artist', post_count: 11, category: 1, words: [], is_deprecated: false },
         ],
         [
           { id: 3, name: 'long_hair', post_count: 999999, category: 0, words: [], is_deprecated: false },
@@ -240,11 +246,15 @@ async function runSmoke() {
       const tdb = new DatabaseSync(tmpDb, { readOnly: true });
       const tNew = tdb.prepare("SELECT * FROM tag WHERE tag_id='smoke_new_tag_a'").get();
       const tChar = tdb.prepare("SELECT * FROM tag WHERE tag_id='smoke_new_char'").get();
+      const tCharNode = tdb.prepare("SELECT label FROM taxonomy_node WHERE id = ?").get(tChar.node_id);
+      const tArtist = tdb.prepare("SELECT * FROM artist WHERE tag_id='smoke_new_artist'").get();
+      const tArtistInTag = tdb.prepare("SELECT COUNT(*) c FROM tag WHERE tag_id='smoke_new_artist'").get().c;
+      const tLegacyNode = tdb.prepare("SELECT label FROM taxonomy_node WHERE id = ?").get(tdb.prepare("SELECT node_id FROM tag WHERE tag_id='legacy_char'").get().node_id);
       const tHot = tdb.prepare('SELECT post_count, zh FROM tag WHERE tag_id = ?').get('long_hair');
       const tNode = tdb.prepare("SELECT label, depth FROM taxonomy_node WHERE id='online-import'").get();
       const tMeta = tdb.prepare("SELECT value FROM meta WHERE key='aitag:update_stats'").get();
       tdb.close();
-      results.push(`update newTag source=${tNew.source} node=${tNew.node_id} charCat=${tChar.category} hot=${tHot.post_count} zh-preserved=${tHot.zh} node=${tNode.label}/${tNode.depth} meta=${!!tMeta}`);
+      results.push(`update newTag source=${tNew.source} node=${tNew.node_id} charNode=${tCharNode.label} artistInArtist=${!!tArtist} artistNotInTag=${tArtistInTag === 0} legacy=${tLegacyNode.label} hot=${tHot.post_count} zh-preserved=${tHot.zh} node=${tNode.label}/${tNode.depth} meta=${!!tMeta}`);
       const con = await Promise.allSettled([
         wordlib.updateTagLib({ mode: 'fast', dbPath: tmpDb, fetcher: fakeFetch, pageDelayMs: 1 }),
         wordlib.updateTagLib({ mode: 'fast', dbPath: tmpDb, fetcher: fakeFetch, pageDelayMs: 1 }),

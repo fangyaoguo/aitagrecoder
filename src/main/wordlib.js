@@ -295,12 +295,38 @@ async function fetchPageSafe(doFetch, order, page) {
   }
 }
 
-// 「未分类(在线新增)」L1 节点,在线拉取的新 tag 统一挂载(幂等)
+// 「未分类(在线新增)」L1 节点,在线拉取的新 tag 默认挂载(幂等)
 function ensureOnlineNode(rw) {
   if (rw.prepare('SELECT id FROM taxonomy_node WHERE id = ?').get(ONLINE_NODE_ID)) return;
   const maxSort = rw.prepare('SELECT COALESCE(MAX(sort_order), 0) m FROM taxonomy_node').get().m;
   rw.prepare('INSERT INTO taxonomy_node(id, parent_id, label, depth, sort_order, imported_key, created_at) VALUES(?, NULL, ?, 1, ?, NULL, ?)')
     .run(ONLINE_NODE_ID, '未分类(在线新增)', maxSort + 1, new Date().toISOString());
+}
+
+// Danbooru category -> 本地一级分类节点 id:
+//   general(0) 无法细分 -> 未分类(在线新增); character(4) -> 作品角色;
+//   copyright(3) -> 作品-文化-引用; metadata(5) -> 文字-图形-符号-界面;
+//   artist(1) -> 画师表(由调用方处理,不进 tag 表)
+// 节点按 label 匹配,匹配不到回退「未分类(在线新增)」(幂等)
+function resolveOnlineNodes(rw) {
+  const l1s = rw.prepare('SELECT id, label FROM taxonomy_node WHERE parent_id IS NULL').all();
+  const find = (label) => {
+    const n = l1s.find((x) => x.label === label);
+    return n ? n.id : null;
+  };
+  return {
+    character: find('作品角色') || ONLINE_NODE_ID,
+    reference: find('作品-文化-引用') || ONLINE_NODE_ID,
+    graphic: find('文字-图形-符号-界面') || ONLINE_NODE_ID,
+  };
+}
+
+// 存量迁移:早期版本新标签一律挂「未分类(在线新增)」且 category 归一化为 0/4/-1,
+// 现仅可把 character(4) 可靠归位;artist/版权/元数据(当时记为 -1)保留在未分类(幂等)
+function migrateOnlineTags(rw, nodes) {
+  if (nodes.character !== ONLINE_NODE_ID) {
+    rw.prepare('UPDATE tag SET node_id = ? WHERE node_id = ? AND category = 4').run(nodes.character, ONLINE_NODE_ID);
+  }
 }
 
 // 在线更新词库:两阶段拉取 Danbooru tags
@@ -322,10 +348,17 @@ async function updateTagLib({ mode = 'fast', dbPath = null, fetcher = null, page
     rw = new DatabaseSync(dbPath || wordlibPath());
     db = rw;
     ensureOnlineNode(rw);
+    const nodes = resolveOnlineNodes(rw);
+    migrateOnlineTags(rw, nodes);
 
     const ins = rw.prepare(`INSERT INTO tag(tag_id, zh, en_display, zh_aliases_json, en_aliases_json, search_text, source, safety, post_count, main_count, nsfw_count, category, status, work_id, node_id)
-      VALUES(?, '', ?, '[]', ?, ?, 'o', 'unknown', ?, ?, 0, ?, 'classified', '', '${ONLINE_NODE_ID}')`);
+      VALUES(?, '', ?, '[]', ?, ?, 'o', 'unknown', ?, ?, 0, ?, 'classified', '', ?)`);
     const upd = rw.prepare('UPDATE tag SET post_count = ?, main_count = ? WHERE tag_id = ?');
+    const delTag = rw.prepare('DELETE FROM tag WHERE tag_id = ?');
+    const artistUpd = rw.prepare('UPDATE artist SET post_count = ? WHERE tag_id = ?');
+    const artistIns = rw.prepare("INSERT OR REPLACE INTO artist(tag_id, en, zh, aliases_json, search_text, post_count, origin, year) VALUES(?, ?, '', '[]', ?, ?, '', '')");
+    // 在线新增的 node 归属:character/copyright/metadata 尽量归位,general 进未分类
+    const nodeOf = (category) => category === 4 ? nodes.character : category === 3 ? nodes.reference : category === 5 ? nodes.graphic : ONLINE_NODE_ID;
 
     // 一页 = 一个事务:先批量查已存在,再逐条 INSERT / UPDATE
     const applyPage = (rows) => {
@@ -334,17 +367,29 @@ async function updateTagLib({ mode = 'fast', dbPath = null, fetcher = null, page
       const ids = uniq.map((t) => t.name);
       const marks = ids.map(() => '?').join(',');
       const existing = new Set(rw.prepare(`SELECT tag_id FROM tag WHERE tag_id IN (${marks})`).all(...ids).map((r) => r.tag_id));
+      const existingArtists = new Set(rw.prepare(`SELECT tag_id FROM artist WHERE tag_id IN (${marks})`).all(...ids).map((r) => r.tag_id));
       rw.exec('BEGIN');
       try {
         for (const t of uniq) {
           const postCount = Number(t.post_count) || 0;
-          const category = t.category === 4 ? 4 : (t.category === 0 ? 0 : -1);
-          if (existing.has(t.name)) {
+          const category = Number.isInteger(t.category) && t.category >= 0 && t.category <= 5 ? t.category : -1;
+          if (category === 1) {
+            // 画师标签 -> 画师表(独立画师库):旧版误入 tag 表的先迁出,不占 tag 表
+            if (existing.has(t.name)) { delTag.run(t.name); existing.delete(t.name); }
+            if (existingArtists.has(t.name)) {
+              artistUpd.run(postCount, t.name);
+              stats.updatedTags += 1;
+            } else {
+              const words = Array.isArray(t.words) ? t.words : [];
+              artistIns.run(t.name, t.name, [t.name, ...words].join(' ').toLowerCase(), postCount);
+              stats.newTags += 1;
+            }
+          } else if (existing.has(t.name)) {
             const r = upd.run(postCount, postCount, t.name);
             if (Number(r.changes) > 0) stats.updatedTags += 1;
           } else {
             const words = Array.isArray(t.words) ? t.words : [];
-            ins.run(t.name, t.name, JSON.stringify(words), [t.name, ...words].join(' ').toLowerCase(), postCount, postCount, category);
+            ins.run(t.name, t.name, JSON.stringify(words), [t.name, ...words].join(' ').toLowerCase(), postCount, postCount, category, nodeOf(category));
             stats.newTags += 1;
           }
         }
