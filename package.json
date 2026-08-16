@@ -1,6 +1,6 @@
 {
   "name": "aitagrecorder",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "AI 绘画 Tag 记录器 - 条目化记录正向/负向提示词，集成词库工具箱",
   "main": "dist/electron/main.js",
   "author": "aitagrecorder",
