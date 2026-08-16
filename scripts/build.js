@@ -1,5 +1,5 @@
 'use strict';
-// 一键生成:编译渲染进程(vite) + 拷贝主进程/preload 到 dist/electron + 生成图标
+// 一键生成:编译渲染进程(vite) + 拷贝主进程/preload 到 dist/electron
 // 用法:node scripts/build.js 或 npm run build 或 scripts/build.cmd
 
 const { spawnSync } = require('node:child_process');
@@ -23,12 +23,6 @@ function copyDir(src, dest) {
     if (fs.statSync(s).isDirectory()) copyDir(s, d);
     else fs.copyFileSync(s, d);
   }
-}
-
-// 0. 图标
-if (!fs.existsSync(path.join(ROOT, 'build', 'icon.png'))) {
-  ok('生成图标…');
-  sh('node', ['scripts/make-icon.js']);
 }
 
 // 1. 渲染进程

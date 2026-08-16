@@ -19,7 +19,7 @@ AI 绘画提示词（Tag）记录与管理工具：以条目为单位记录正�
 | 命令 | 说明 |
 |---|---|
 | `run.bat dev` | 开发模式：自动安装依赖 → 启动 Vite 热更新 → 启动 Electron（含开发者工具） |
-| `run.bat build` | 构建：Vite 编译渲染层 + 拷贝主进程 / preload 至 `dist/` + 生成图标 |
+| `run.bat build` | 构建：Vite 编译渲染层 + 拷贝主进程 / preload 至 `dist/` |
 | `run.bat package` | 打包：构建后以 electron-builder 产出便携版 exe 至 `release/` |
 | `run.bat install` | 仅安装依赖 |
 | `run.bat smoke` | 数据层冒烟测试 |

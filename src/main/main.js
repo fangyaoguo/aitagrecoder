@@ -327,6 +327,36 @@ async function runUiTest() {
     await new Promise(r => setTimeout(r, 500));
     const wlVisible = !document.getElementById('view-wordlib').classList.contains('active')
       ? 'FAIL' : document.getElementById('view-wordlib').classList.contains('active') ? 'ok' : 'FAIL';
+    // 3b. 作品筛选显隐(仅「全部」/「作品角色」显示)+ 画师模式点选进入画师槽
+    const wlFixes = await (async () => {
+      const works = document.getElementById('wl-works');
+      const clickType = async (type) => {
+        document.querySelector('#wl-l1 [data-type="' + type + '"]').click();
+        await new Promise((r) => setTimeout(r, 400));
+      };
+      await clickType('all');
+      const allShown = !works.hidden;
+      await clickType('character');
+      const characterShown = !works.hidden;
+      await clickType('scene');
+      const sceneHidden = works.hidden;
+      await clickType('artist');
+      const artistHidden = works.hidden;
+      const input = document.getElementById('wl-search-input');
+      input.value = 'mizuki';
+      input.dispatchEvent(new Event('input'));
+      await new Promise((r) => setTimeout(r, 1000));
+      const row = document.querySelector('#wl-results .result-row');
+      if (row) row.click();
+      await new Promise((r) => setTimeout(r, 400));
+      const artistSlotPicks = document.querySelectorAll('#slot-list [data-slot="artist"] .picked').length;
+      const otherSlotPicks = document.querySelectorAll('#slot-list [data-slot="other"] .picked').length;
+      document.getElementById('wl-search-clear').click();
+      document.getElementById('composer-clear').click();
+      await clickType('all');
+      const ok = allShown && characterShown && sceneHidden && artistHidden && artistSlotPicks >= 1 && otherSlotPicks === 0;
+      return { ok: ok ? 'ok' : 'FAIL', allShown, characterShown, sceneHidden, artistHidden, artistSlotPicks, otherSlotPicks };
+    })();
     // 4. 设置页:词库更新卡片存在 + 更新状态可查询
     document.querySelector('.nav-item[data-view="settings"]').click();
     await new Promise(r => setTimeout(r, 400));
@@ -342,9 +372,13 @@ async function runUiTest() {
       tagSearch: wl.slice(0, 3).map(t => t.en),
       artists: arts.map(a => a.en),
       wlVisible,
+      wlFixes,
       settingsUpdate: upCard && upBtn && upModes === 2 && typeof upStatus.updating === 'boolean' ? 'ok' : 'FAIL',
     };
   })()`);
+  if (rendererCheck.wlFixes && rendererCheck.wlFixes.ok !== 'ok') {
+    errors.push('wlFixes FAIL:' + JSON.stringify(rendererCheck.wlFixes));
+  }
   console.log('[uitest] renderer:', JSON.stringify(rendererCheck));
   console.log(`[uitest] elapsed ${Date.now() - started}ms`);
   if (errors.length) {

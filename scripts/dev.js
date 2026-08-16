@@ -57,12 +57,7 @@ async function main() {
     });
   }
 
-  // 2. 生成图标(缺失时)
-  if (!fs.existsSync(path.join(ROOT, 'build', 'icon.png'))) {
-    spawn(process.execPath, ['scripts/make-icon.js'], { cwd: ROOT, stdio: 'inherit' });
-  }
-
-  // 3. 启动 vite(直接走 node,免 .cmd 中介)
+  // 2. 启动 vite(直接走 node,免 .cmd 中介)
   ok('启动 vite 渲染进程…');
   const vite = spawn(process.execPath, [VITE_JS, '--config', 'vite.config.mjs'], { cwd: ROOT, stdio: 'inherit' });
   vite.on('exit', (code) => {

@@ -304,8 +304,10 @@ function renderSubTree() {
   const l1 = state.l1ByKey.get(state.typeFilter);
   const show = state.typeFilter !== 'all' && state.typeFilter !== 'artist' && l1;
   el.hidden = !show;
-  // 画师模式无作品/子树
-  $('wl-works').hidden = state.typeFilter === 'artist';
+  // 作品筛选仅「全部」与「作品角色」下显示;其余分类隐藏并清空作品过滤
+  const showWorks = state.typeFilter === 'all' || state.typeFilter === 'character';
+  $('wl-works').hidden = !showWorks;
+  if (!showWorks && state.work) { state.work = null; renderWorks(); }
   if (!show) { el.innerHTML = ''; return; }
 
   const rows = [];
@@ -430,7 +432,8 @@ async function loadMore(reset) {
 
   if (state.typeFilter === 'artist') {
     // 画师模式:独立画师库
-    rows = await window.api.wordlibSearchArtists({ q, limit: state.limit, offset: state.resultOffset });
+    rows = (await window.api.wordlibSearchArtists({ q, limit: state.limit, offset: state.resultOffset }))
+      .map((a) => ({ ...a, kind: 'artist' }));
     totalText = '独立画师词库';
   } else if (state.work) {
     // 作品模式:该作品的标签(按热度),本地过滤搜索词
