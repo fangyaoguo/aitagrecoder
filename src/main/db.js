@@ -198,16 +198,17 @@ function tagIndex({ q = '', limit = 80 } = {}) {
   if (q) {
     rows = db
       .prepare(
-        `SELECT tag_norm, MIN(tag) AS tag, COUNT(DISTINCT entry_id) AS c
-         FROM entry_tags WHERE tag_norm LIKE ? GROUP BY tag_norm
-         ORDER BY c DESC LIMIT ?`
+        `SELECT tag_norm, MIN(tag) AS tag, COUNT(*) AS c
+         FROM (SELECT DISTINCT entry_id, tag_norm, tag FROM entry_tags WHERE tag_norm LIKE ?)
+         GROUP BY tag_norm ORDER BY c DESC LIMIT ?`
       )
       .all('%' + q.toLowerCase() + '%', limit);
   } else {
     rows = db
       .prepare(
-        `SELECT tag_norm, MIN(tag) AS tag, COUNT(DISTINCT entry_id) AS c
-         FROM entry_tags GROUP BY tag_norm ORDER BY c DESC LIMIT ?`
+        `SELECT tag_norm, MIN(tag) AS tag, COUNT(*) AS c
+         FROM (SELECT DISTINCT entry_id, tag_norm, tag FROM entry_tags)
+         GROUP BY tag_norm ORDER BY c DESC LIMIT ?`
       )
       .all(limit);
   }

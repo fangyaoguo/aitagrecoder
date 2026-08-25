@@ -179,6 +179,7 @@ function registerIpc() {
     });
   });
   ipcMain.handle('wordlib:updateStatus', async () => {
+    if (wordlib.isUpdating) return wordlib.updateStatus();   // 词库更新中:isUpdating 锁已保证连接可用
     try { await wordlib.ensure(); } catch {}
     return wordlib.updateStatus();
   });

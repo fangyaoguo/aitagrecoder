@@ -477,7 +477,14 @@ async function loadMore(reset) {
 
 function renderResults(el) {
   if (!state.results.length) {
-    el.innerHTML = '<div class="empty-tip">没有结果。换一个词试试,或切换上方分类。</div>';
+    const tip = state.work
+      ? '该作品下没有匹配的标签。'
+      : state.typeFilter === 'artist'
+        ? '没有找到匹配的画师。换一个词试试。'
+        : state.searchQ
+          ? '没有找到匹配的标签。换一个词试试,或切换上方分类。'
+          : '该分类下暂时没有标签。';
+    el.innerHTML = `<div class="empty-tip">${tip}</div>`;
     return;
   }
   el.innerHTML = state.results.map((r) => {

@@ -440,11 +440,11 @@ async function updateTagLib({ mode = 'fast', dbPath = null, fetcher = null, page
 function updateStatus() {
   let lastAt = null, lastStats = null, lastError = null;
   try {
-    const la = db.prepare("SELECT value FROM meta WHERE key='aitag:update_last_at'").get();
+    const la = db && db.prepare("SELECT value FROM meta WHERE key='aitag:update_last_at'").get();
     if (la) lastAt = la.value;
-    const s = db.prepare("SELECT value FROM meta WHERE key='aitag:update_stats'").get();
+    const s = db && db.prepare("SELECT value FROM meta WHERE key='aitag:update_stats'").get();
     if (s && s.value) lastStats = JSON.parse(s.value);
-    const er = db.prepare("SELECT value FROM meta WHERE key='aitag:update_last_error'").get();
+    const er = db && db.prepare("SELECT value FROM meta WHERE key='aitag:update_last_error'").get();
     if (er) lastError = er.value;
   } catch {}
   return { updating: isUpdating, lastAt, lastStats, lastError };
@@ -455,5 +455,6 @@ module.exports = {
   descendantsOf,
   updateTagLib, updateStatus, UPDATE_MODES,
   SAFETIES, SOURCES, SOURCE_LABELS,
+  isUpdating: () => isUpdating,
   get path() { return wordlibPath(); },
 };
